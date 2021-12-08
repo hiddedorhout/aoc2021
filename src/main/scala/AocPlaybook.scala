@@ -85,7 +85,7 @@ object AocPlaybook extends App {
 
   val diagnosticReport = readFile("diagnosticReport")(diagnosticDecoder)
 
-  val powerConsumption = diagnosticReport.transpose
+  lazy val powerConsumption = diagnosticReport.transpose
     .map(getMostAndLeastAvailable)
     .transpose
     .map(listOfBinaryValuesToInt)
@@ -101,7 +101,7 @@ object AocPlaybook extends App {
 
   def listOfBinaryValuesToInt(in: List[String]): Int = Integer.parseInt(in.mkString(""), 2)
 
-  println(s"The power consumption of the submarine is ${powerConsumption}")
+//  println(s"The power consumption of the submarine is ${powerConsumption}")
 
   def toFilteredList(next: List[List[String]],
                      criteriaOps: List[List[String]] => List[String])(index: Int): List[List[String]] = {
@@ -132,6 +132,106 @@ object AocPlaybook extends App {
   lazy val co2Rating = listOfBinaryValuesToInt(
     toFilteredList(diagnosticReport, co2Criteria)(diagnosticReport.head.length).head
   )
-  println(s"The life support rating of the submarine is ${oxygenRating * co2Rating}")
+//  println(s"The life support rating of the submarine is ${oxygenRating * co2Rating}")
+
+  // DAY 4
+  println("DAY 4")
+  type Board = List[List[(Int, Boolean)]]
+
+  val (draws, flatBoards) =
+    readFile("bingo")(identity).foldLeft(List.empty[Int], List.empty[List[Int]])((drawsBoards, line) => {
+      val (draws, boards) = drawsBoards
+      if (draws.isEmpty) {
+        (line.split(",").toList.map(_.toInt), boards)
+      } else {
+        if (line.isEmpty) {
+          drawsBoards
+        } else {
+          val cleanLine = line.trim.split("\\s+").toList
+          (draws, cleanLine.map(_.toInt) :: boards)
+        }
+      }
+    })
+
+  val boards = flatBoards.reverse.sliding(5, 5).toList
+
+  println(s"n boards: ${boards.length}")
+
+  val statusBoard: List[Board] = boards.map(board => {
+    board.map(_.map((_, false)))
+  })
+
+  def updateBoard(board: Board, draw: Int): Board = {
+    board.map(_.map(n => {
+      if (n._1 == draw) n.copy(_2 = true) else n
+    }))
+  }
+
+  def boardScore(board: Board): Option[Int] = {
+    val columnScore = board.transpose
+      .map(column => {
+        if (column.map(_._2).forall(_ == true)) {
+          Some(calculateBoardSum(board))
+        } else {
+          None
+        }
+      })
+      .combineAll
+    val rowScore = board
+      .map(row => {
+        if (row.map(_._2).forall(_ == true)) {
+          Some(calculateBoardSum(board))
+        } else {
+          None
+        }
+      })
+      .combineAll
+    List(columnScore, rowScore).combineAll
+  }
+
+  def calculateBoardSum(board: Board): Int = {
+    board.map(row => row.filterNot(_._2)).flatMap(_.map(_._1)).sum
+  }
+
+  case class WinningBoard(id: Int, score: Int, board: Board)
+
+  lazy val bingoScore = draws.foldLeft((statusBoard, List.empty[WinningBoard]))((boardsResult, draw) => {
+    val (boards, winningBoards) = boardsResult
+    val listOfBoardResults = boards.zipWithIndex.map(boardId => {
+      val (board, id)  = boardId
+      val updatedBoard = updateBoard(board, draw)
+      boardScore(updatedBoard) match {
+        case Some(score) => {
+          if (!winningBoards.map(_.id).contains(id)) {
+            val winner = WinningBoard(id, score * draw, updatedBoard)
+            (updatedBoard, winner :: winningBoards)
+          } else {
+            (updatedBoard, winningBoards)
+          }
+        }
+        case None => (updatedBoard, winningBoards)
+      }
+    })
+
+    listOfBoardResults.foldLeft((listOfBoardResults.map(_._1), List.empty[WinningBoard]))(
+      (boardsAndScores, boardResult) => {
+        val winningBoards = boardResult._2
+          .foldLeft(List.empty[WinningBoard])((acc, winner) => {
+            if (!boardsAndScores._2.map(_.board).contains(winner.board)) {
+              winner :: acc
+            } else {
+              acc
+            }
+          })
+          .reverse
+        val bb = winningBoards ::: boardsAndScores._2
+        (boardsAndScores._1, bb)
+      }
+    )
+
+  })
+
+  println(s"The first board to win has score ${bingoScore._2.reverse.head.score}")
+  println(s"The last board to win has score ${bingoScore._2.head.score}")
 
 }
