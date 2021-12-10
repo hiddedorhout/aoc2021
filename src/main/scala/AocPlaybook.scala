@@ -338,11 +338,33 @@ object AocPlaybook extends App {
       .toList
       .length
 
-  println(
-    s"The Horizontal and Vertical amount of points where at least two lines overlap: ${collisions(horizontalVerticalVentLocations)}"
-  )
-  println(
-    s"The Horizontal, Vertical and Diagonal amount of points where at least two lines overlap: ${collisions(horizontalVerticalDiagonalVentLocations)}"
-  )
+//  println(
+//    s"The Horizontal and Vertical amount of points where at least two lines overlap: ${collisions(horizontalVerticalVentLocations)}"
+//  )
+//  println(
+//    s"The Horizontal, Vertical and Diagonal amount of points where at least two lines overlap: ${collisions(horizontalVerticalDiagonalVentLocations)}"
+//  )
+
+//  day 6
+  println("DAY 6")
+
+  val initialFishCount = readFile("fish")(_.split(",").map(_.toInt)).flatten
+  val days             = 80
+
+  def evolveFish(daysUntilNewFish: List[Int], day: Int): List[Int] = {
+    if (day != 0) {
+      daysUntilNewFish.flatMap(a => {
+        if (a == 0) {
+          evolveFish(List(6, 8), day - 1)
+        } else {
+          evolveFish(List(a - 1), day - 1)
+        }
+      })
+    } else {
+      daysUntilNewFish
+    }
+  }
+
+  println(s"There are ${evolveFish(initialFishCount, days).length} fishes after $days days")
 
 }
