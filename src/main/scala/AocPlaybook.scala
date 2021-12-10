@@ -155,7 +155,7 @@ object AocPlaybook extends App {
 
   val boards = flatBoards.reverse.sliding(5, 5).toList
 
-  println(s"n boards: ${boards.length}")
+//  println(s"n boards: ${boards.length}")
 
   val statusBoard: List[Board] = boards.map(board => {
     board.map(_.map((_, false)))
@@ -231,7 +231,118 @@ object AocPlaybook extends App {
 
   })
 
-  println(s"The first board to win has score ${bingoScore._2.reverse.head.score}")
-  println(s"The last board to win has score ${bingoScore._2.head.score}")
+//  println(s"The first board to win has score ${bingoScore._2.reverse.head.score}")
+//  println(s"The last board to win has score ${bingoScore._2.head.score}")
+
+  // Day 5
+  println("DAY 5")
+
+  type Coordinate = (Int, Int)
+
+  implicit def horizontalVerticalFiler(line: (Coordinate, Coordinate)): List[Coordinate] = {
+    val x1 = line._1._1
+    val y1 = line._1._2
+    val x2 = line._2._1
+    val y2 = line._2._2
+
+    val isHorizontal = x1 == x2
+    val isVertical   = y1 == y2
+
+    (isHorizontal, isVertical) match {
+      case (true, false) =>
+        if (y1 > y2) {
+          y2.to(y1).toList.map(y => (x1, y))
+        } else {
+          y1.to(y2).toList.map(y => (x1, y))
+        }
+      case (false, true) =>
+        if (x1 > x2) {
+          x2.to(x1).toList.map(x => (x, y1))
+        } else {
+          x1.to(x2).toList.map(x => (x, y1))
+        }
+      case _ => List.empty
+    }
+  }
+
+  implicit def diagonalFiler(line: (Coordinate, Coordinate)): List[Coordinate] = {
+    val x1 = line._1._1
+    val y1 = line._1._2
+    val x2 = line._2._1
+    val y2 = line._2._2
+
+    val isHorizontal = x1 == x2
+    val isVertical   = y1 == y2
+    val isDiagonal   = if (isHorizontal || isVertical) false else (y2 - y1).abs / (x2 - x1).abs == 1
+
+    (isHorizontal, isVertical, isDiagonal) match {
+      case (true, false, false) =>
+        if (y1 > y2) {
+          y2.to(y1).toList.map(y => (x1, y))
+        } else {
+          y1.to(y2).toList.map(y => (x1, y))
+        }
+      case (false, true, false) =>
+        if (x1 > x2) {
+          x2.to(x1).toList.map(x => (x, y1))
+        } else {
+          x1.to(x2).toList.map(x => (x, y1))
+        }
+      case (false, false, true) =>
+        (x1 > x2, y1 > y2) match {
+          case (true, true)   => x2.to(x1).toList.zip(y2.to(y1))
+          case (false, false) => x1.to(x2).toList.zip(y1.to(y2))
+          case (true, false)  => x2.to(x1).toList.reverse.zip(y1.to(y2))
+          case (false, true)  => x1.to(x2).toList.zip(y2.to(y1).reverse)
+        }
+      case _ => List.empty
+    }
+  }
+
+  def hvDecoder(line: String): List[Coordinate] = {
+    val start = line.split(" -> ").head.split(",")
+    val end   = line.split(" -> ").reverse.head.split(",")
+    val x1    = start.head.toInt
+    val y1    = start.reverse.head.toInt
+    val x2    = end.head.toInt
+    val y2    = end.reverse.head.toInt
+    horizontalVerticalFiler((x1, y1), (x2, y2))
+  }
+  def hvvDecoder(line: String): List[Coordinate] = {
+    val start = line.split(" -> ").head.split(",")
+    val end   = line.split(" -> ").reverse.head.split(",")
+    val x1    = start.head.toInt
+    val y1    = start.reverse.head.toInt
+    val x2    = end.head.toInt
+    val y2    = end.reverse.head.toInt
+    horizontalVerticalFiler((x1, y1), (x2, y2))
+  }
+
+  val horizontalVerticalVentLocations         = readFile("vents")(value => hvDecoder(value)).flatten
+  val horizontalVerticalDiagonalVentLocations = readFile("vents")(value => hvvDecoder(value)).flatten
+
+  def collisions(ventLocations: List[Coordinate]): Int =
+    ventLocations
+      .foldLeft((Set.empty[Coordinate], List.empty[Coordinate]))((acc, line) => {
+        if (line.isEmpty) {
+          acc
+        } else {
+          if (acc._2.contains(line)) {
+            (acc._1 + line, line :: acc._2)
+          } else {
+            acc.copy(_2 = line :: acc._2)
+          }
+        }
+      })
+      ._1
+      .toList
+      .length
+
+  println(
+    s"The Horizontal and Vertical amount of points where at least two lines overlap: ${collisions(horizontalVerticalVentLocations)}"
+  )
+  println(
+    s"The Horizontal, Vertical and Diagonal amount of points where at least two lines overlap: ${collisions(horizontalVerticalDiagonalVentLocations)}"
+  )
 
 }
